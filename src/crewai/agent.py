@@ -229,6 +229,12 @@ class Agent(BaseAgent):
         tools = tools or self.tools or []
         self.create_agent_executor(tools=tools, task=task)
 
+        # Check if the task result is already in short-term memory
+        if self.crew and self.crew._short_term_memory:
+            short_term_memory_result = self.crew._short_term_memory.search(task_prompt)
+            if short_term_memory_result:
+                return short_term_memory_result
+
         if self.crew and self.crew._train:
             task_prompt = self._training_handler(task_prompt=task_prompt)
         else:
@@ -286,6 +292,15 @@ class Agent(BaseAgent):
         for tool_result in self.tools_results:  # type: ignore # Item "None" of "list[Any] | None" has no attribute "__iter__" (not iterable)
             if tool_result.get("result_as_answer", False):
                 result = tool_result["result"]
+
+        # Save the result in short-term memory
+        if self.crew and self.crew._short_term_memory:
+            self.crew._short_term_memory.save(
+                value=result,
+                metadata={"task_prompt": task_prompt},
+                agent=self.role,
+            )
+
         crewai_event_bus.emit(
             self,
             event=AgentExecutionCompletedEvent(agent=self, task=task, output=result),

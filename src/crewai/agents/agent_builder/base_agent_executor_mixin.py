@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Optional
 
 from crewai.memory.entity.entity_memory_item import EntityMemoryItem
 from crewai.memory.long_term.long_term_memory_item import LongTermMemoryItem
+from crewai.memory.short_term.short_term_memory import ShortTermMemory
 from crewai.utilities import I18N
 from crewai.utilities.converter import ConverterError
 from crewai.utilities.evaluators.task_evaluator import TaskEvaluator
@@ -22,6 +23,10 @@ class CrewAgentExecutorMixin:
     max_iter: int
     _i18n: I18N
     _printer: Printer = Printer()
+    _short_term_memory: ShortTermMemory
+
+    def __init__(self):
+        self._short_term_memory = ShortTermMemory()
 
     def _create_short_term_memory(self, output) -> None:
         """Create and save a short-term memory item if conditions are met."""
@@ -46,6 +51,17 @@ class CrewAgentExecutorMixin:
             except Exception as e:
                 print(f"Failed to add to short term memory: {e}")
                 pass
+
+    def _retrieve_short_term_memory(self, query) -> Optional[str]:
+        """Retrieve a short-term memory item based on a query."""
+        if self.crew and hasattr(self.crew, "_short_term_memory") and self.crew._short_term_memory:
+            try:
+                result = self.crew._short_term_memory.search(query)
+                return result
+            except Exception as e:
+                print(f"Failed to retrieve short term memory: {e}")
+                return None
+        return None
 
     def _create_long_term_memory(self, output) -> None:
         """Create and save long-term and entity memory items based on evaluation."""
